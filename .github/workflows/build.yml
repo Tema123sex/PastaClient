@@ -1,0 +1,31 @@
+name: Windows
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'PastaClient.patch'
+      - 'data/PastaClient/gui_logo.png'
+      - 'build.bat'
+      - '.github/workflows/build.yml'
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: cmd
+        run: build.bat
+      - name: Package
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path BestClient-source/build -Recurse -Filter PastaClient.exe | Select-Object -First 1
+          if (-not $exe) { throw 'PastaClient.exe not built' }
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item $exe.FullName release/
+          Copy-Item -Path BestClient-source/data -Destination release/data -Recurse
+          Get-ChildItem -Path BestClient-source/build -Recurse -Filter '*.dll' | ForEach-Object { Copy-Item $_.FullName release/ -ErrorAction SilentlyContinue }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PastaClient-Windows-x64
+          path: release/
