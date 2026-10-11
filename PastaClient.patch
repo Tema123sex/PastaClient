@@ -1,0 +1,757 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c3ee600..73feb52 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -263,7 +263,7 @@ if(NOT "${CMAKE_CURRENT_BINARY_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
+ endif()
+ 
+ set(SERVER_EXECUTABLE DDNet-Server CACHE STRING "Name of the built server executable")
+-set(CLIENT_EXECUTABLE DDNet CACHE STRING "Name of the build client executable")
++set(CLIENT_EXECUTABLE PastaClient CACHE STRING "Name of the build client executable")
+ set(IOS_BUNDLE_IDENTIFIER "org.ddnet.client" CACHE STRING "iOS bundle identifier")
+ 
+ ########################################################################
+@@ -3594,7 +3594,7 @@ if(CLIENT)
+ 
+   if(WIN32)
+     set(VERSION_COMPANY "${CLIENT_EXECUTABLE} Team")
+-    set(VERSION_PRODUCT_NAME "BestClient")
++    set(VERSION_PRODUCT_NAME "PastaClient")
+     configure_file("other/versioninfo/updater.versioninfo.rc.in" "updater.versioninfo.rc")
+     configure_file("other/manifest/updater.manifest.in" "updater.manifest")
+     if(NOT MINGW)
+diff --git a/src/engine/client/graphics_threaded.cpp b/src/engine/client/graphics_threaded.cpp
+index 0c7c111..67f51c3 100644
+--- a/src/engine/client/graphics_threaded.cpp
++++ b/src/engine/client/graphics_threaded.cpp
+@@ -2235,7 +2235,7 @@ int CGraphics_Threaded::IssueInit()
+ 		Flags |= IGraphicsBackend::INITFLAG_VSYNC;
+ 	}
+ 
+-	const int Result = m_pBackend->Init("BestClient", &g_Config.m_GfxScreen, &g_Config.m_GfxScreenWidth, &g_Config.m_GfxScreenHeight, &g_Config.m_GfxScreenRefreshRate, &g_Config.m_GfxFsaaSamples, Flags, &m_DesktopSize.x, &m_DesktopSize.y, &m_ScreenWidth, &m_ScreenHeight, m_pStorage); // bestclient
++	const int Result = m_pBackend->Init("PastaClient", &g_Config.m_GfxScreen, &g_Config.m_GfxScreenWidth, &g_Config.m_GfxScreenHeight, &g_Config.m_GfxScreenRefreshRate, &g_Config.m_GfxFsaaSamples, Flags, &m_DesktopSize.x, &m_DesktopSize.y, &m_ScreenWidth, &m_ScreenHeight, m_pStorage); // bestclient
+ 	m_DrawableWidth = m_ScreenWidth;
+ 	m_DrawableHeight = m_ScreenHeight;
+ 	AddBackEndWarningIfExists();
+diff --git a/src/engine/shared/config_variables.h b/src/engine/shared/config_variables.h
+index d18f4a7..a3e9eea 100644
+--- a/src/engine/shared/config_variables.h
++++ b/src/engine/shared/config_variables.h
+@@ -228,7 +228,7 @@ MACRO_CONFIG_STR(ClDummy7SkinEyes, dummy7_skin_eyes, protocol7::MAX_SKIN_ARRAY_S
+ // MACRO_CONFIG_STR(ClCensorUrl, cl_censor_url, 100, "https://info.ddnet.org/censor.json", CFGFLAG_CLIENT | CFGFLAG_SAVE, "URL used to download words to censor (must start with https://)")
+ 
+ MACRO_CONFIG_INT(UiPage, ui_page, 6, 6, 13, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Interface page")
+-MACRO_CONFIG_INT(UiSettingsPage, ui_settings_page, 0, 0, 13, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Interface settings page")
++MACRO_CONFIG_INT(UiSettingsPage, ui_settings_page, 0, 0, 15, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Interface settings page")
+ MACRO_CONFIG_INT(UiToolboxPage, ui_toolbox_page, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toolbox page")
+ MACRO_CONFIG_STR(UiServerAddress, ui_server_address, 1024, "localhost:8303", CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Interface server address")
+ MACRO_CONFIG_INT(UiMousesens, ui_mousesens, 200, 1, 100000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Mouse sensitivity for menus/editor")
+diff --git a/src/engine/shared/config_variables_bestclient.h b/src/engine/shared/config_variables_bestclient.h
+index 97e2a5e..8751e3c 100644
+--- a/src/engine/shared/config_variables_bestclient.h
++++ b/src/engine/shared/config_variables_bestclient.h
+@@ -20,6 +20,10 @@ MACRO_CONFIG_INT(BcChatAltCommandLayout, bc_chat_alt_command_layout, 0, 0, 1, CF
+ MACRO_CONFIG_INT(BcChatMessageActions, bc_chat_message_actions, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable reply/copy message menu on chat messages")
+ MACRO_CONFIG_INT(BcNotifySavesOnMap, bc_notify_saves_on_map, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Notify in chat when the current map has team saves")
+ 
++// Chillerbot-UX-inspired nearest player skin copier (disabled by default).
++MACRO_CONFIG_INT(BcCommunityAutoSkinSteal, bc_community_auto_skin_steal, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Copy the nearest player's skin (10 second cooldown)")
++MACRO_CONFIG_INT(BcCommunityAutoSkinStealRadius, bc_community_auto_skin_steal_radius, 4, 1, 20, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Maximum distance of skin copy in tiles")
++
+ // Chat Filter
+ MACRO_CONFIG_INT(BcChatOnlyTagsAndWhispers, bc_chat_only_tags_and_whispers, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show only highlighted and private chat messages")
+ 
+@@ -235,7 +239,7 @@ MACRO_CONFIG_INT(BcMenuUiTabSide, bc_menu_ui_tab_side, 1, 0, 1, CFGFLAG_CLIENT |
+ MACRO_CONFIG_INT(BcMenuUiNewColorPicker, bc_menu_ui_new_color_picker, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use better color picker style when Better UI is enabled")
+ MACRO_CONFIG_INT(BcMenuUiBetterFont, bc_menu_ui_better_font, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Use Better font (Actay Wide Bold) instead of default/TClient font")
+ MACRO_CONFIG_INT(BcShowStylePicker, bc_show_style_picker, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show one-time menu UI style picker on first launch")
+-MACRO_CONFIG_INT(BcSettingsNavExpanded, bc_settings_nav_expanded, 0, 0, 7, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Better settings nav expanded groups (bit 0 = DDNet, 1 = TClient, 2 = BestClient)")
++MACRO_CONFIG_INT(BcSettingsNavExpanded, bc_settings_nav_expanded, 0, 0, 15, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Expanded nav groups: DDNet, TClient, BestClient, Community")
+ 
+ // UI Themes
+ MACRO_CONFIG_INT(BcUiThemes, bc_ui_themes, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable UI Themes")
+diff --git a/src/game/client/components/bestclient/bestclient.cpp b/src/game/client/components/bestclient/bestclient.cpp
+index ee1d899..9e2e5db 100644
+--- a/src/game/client/components/bestclient/bestclient.cpp
++++ b/src/game/client/components/bestclient/bestclient.cpp
+@@ -182,6 +182,7 @@ void CBestClient::OnMapLoad()
+ void CBestClient::OnUpdate()
+ {
+ 	UpdateFindHours();
++	UpdateCommunitySkinStealer();
+ 
+ 	if(!g_Config.m_BcNotifySavesOnMap || Client()->State() == IClient::STATE_DEMOPLAYBACK)
+ 	{
+@@ -206,6 +207,53 @@ void CBestClient::OnUpdate()
+ 	}
+ }
+ 
++
++// Concept adapted from Chillerbot-UX: copy the nearest tee's appearance.
++// Re-uses BestClient::CopyPlayerSkin, which already handles player and dummy
++// skins/colors and sends the correct info packet.
++void CBestClient::UpdateCommunitySkinStealer()
++{
++    if(!g_Config.m_BcCommunityAutoSkinSteal || Client()->State() != IClient::STATE_ONLINE)
++        return;
++    if(!GameClient()->m_Snap.m_pLocalCharacter)
++        return;
++    const int64_t Now = time_get();
++    if(Now < m_CommunitySkinStealNextTime)
++        return;
++    const int LocalId = GameClient()->m_Snap.m_LocalClientId;
++    const auto *pChar = GameClient()->m_Snap.m_pLocalCharacter;
++    if(LocalId < 0 || LocalId >= MAX_CLIENTS)
++        return;
++    const vec2 OwnPos(pChar->m_X, pChar->m_Y);
++    int BestClientId = -1;
++    float BestDistance = (float)g_Config.m_BcCommunityAutoSkinStealRadius * 32.0f;
++    for(int Id = 0; Id < MAX_CLIENTS; ++Id)
++    {
++        if(Id == LocalId || !GameClient()->m_Snap.m_aCharacters[Id].m_Active)
++            continue;
++        const CGameClient::CClientData &Other = GameClient()->m_aClients[Id];
++        if(!Other.m_aSkinName[0])
++            continue;
++        const float Dist = distance(Other.m_RenderPos, OwnPos);
++        if(Dist < BestDistance)
++        {
++            BestDistance = Dist;
++            BestClientId = Id;
++        }
++    }
++    // Always throttle attempts to avoid repeated appearance updates.
++    m_CommunitySkinStealNextTime = Now + 10 * time_freq();
++    if(BestClientId < 0)
++        return;
++    const CGameClient::CClientData &Selected = GameClient()->m_aClients[BestClientId];
++    if(str_comp(Selected.m_aSkinName, g_Config.m_ClPlayerSkin) == 0 &&
++        Selected.m_UseCustomColor == g_Config.m_ClPlayerUseCustomColor &&
++        Selected.m_ColorBody == g_Config.m_ClPlayerColorBody &&
++        Selected.m_ColorFeet == g_Config.m_ClPlayerColorFeet)
++        return;
++    CopyPlayerSkin(BestClientId);
++}
++
+ void CBestClient::OnShutdown()
+ {
+ 	ResetFindHours();
+@@ -217,6 +265,7 @@ void CBestClient::OnShutdown()
+ void CBestClient::OnReset()
+ {
+ 	ResetFindHours();
++	m_CommunitySkinStealNextTime = 0;
+ 	for(int Dummy = 0; Dummy < NUM_DUMMIES; ++Dummy)
+ 	{
+ 		m_aAutoTeamLockLastTeam[Dummy] = TEAM_FLOCK;
+diff --git a/src/game/client/components/bestclient/bestclient.h b/src/game/client/components/bestclient/bestclient.h
+index a986ae1..ae5c459 100644
+--- a/src/game/client/components/bestclient/bestclient.h
++++ b/src/game/client/components/bestclient/bestclient.h
+@@ -44,6 +44,8 @@ class CBestClient : public CComponent
+ 	float m_SpecMovedNotifyTime = -999.0f;
+ 	bool m_SavesNotifySchedule = false;
+ 	int64_t m_SavesNotifyDeadline = 0;
++	int64_t m_CommunitySkinStealNextTime = 0;
++	void UpdateCommunitySkinStealer();
+ 
+ 	std::shared_ptr<IHttpRequest> m_pFindHoursTask;
+ 	char m_aFindHoursPlayer[MAX_NAME_LENGTH]{};
+diff --git a/src/game/client/components/bestclient/community_catalog.h b/src/game/client/components/bestclient/community_catalog.h
+new file mode 100644
+index 0000000..2a4bbe7
+--- /dev/null
++++ b/src/game/client/components/bestclient/community_catalog.h
+@@ -0,0 +1,83 @@
++// MultiClient sidebar source registry. A source entry is NOT a merged client.
++#pragma once
++namespace MultiCommunity {
++struct CEntry { const char *m_pName; const char *m_pUrl; bool m_Partial; const char *m_pVersion; };
++inline constexpr CEntry aClients[] = {
++    { "Entity Client", "https://github.com/FoxNet-DDNet/Entity-Client-DDNet", true, "v3.0" },
++    { "RushieClient", "https://github.com/RushieClient/RushieClient-ddnet", true, "V4.1.1" },
++    { "Chillerbot-UX", "https://github.com/chillerbot/chillerbot-ux", true, "v0.0.9" },
++    { "Kaizo", "https://github.com/M0REKZ/kaizo-client", false, "unversioned" },
++    { "FeX V2", "https://github.com/faffa81/FeX-V2-Client", false, "v6.1" },
++    { "StA", "https://github.com/StormAxs/StA-Main", false, "17.4" },
++    { "QmClient", "https://github.com/wxj881027/QmClient", false, "v3.3" },
++    { "F-Client", "https://github.com/fokkonaut/F-Client", false, "0.7.4" },
++    { "AllTheHaxx", "https://github.com/AllTheHaxx/AllTheHaxx", false, "1.26" },
++    { "InfClass", "https://github.com/infclass/infclass-client", false, "v0.1.8" },
++    { "PWN Client", "https://github.com/Krixx1337/PWN-Client-0.7-Teeworlds", false, "unversioned" },
++    { "Mighty Client", "https://github.com/miightyowl/mighty-client", false, "v1.5.4" },
++    { "ZillyWoods", "https://github.com/ZillyWoods/ZillyWoods", false, "v0008" },
++    { "DDNet SM64", "https://github.com/headshot2017/ddnet-sm64", false, "v1.0" },
++    { "Chillerbot-NG", "https://github.com/chillerbot/chillerbot-ng", false, "v0003" },
++    { "WorstClient", "https://github.com/Entity704/WorstClient", false, "unversioned" },
++    { "DPerX Reborn", "https://github.com/kiocode/DPerX-Reborn", false, "1.1.4" },
++    { "DMClients", "https://github.com/lothiann/DMClients", false, "v9" },
++    { "CChat TW", "https://github.com/k-i-o/CChat.TW", false, "v0.1.6" },
++    { "DDNet HotUI", "https://github.com/ChillerDragon/ddnet_hotui", false, "unversioned" },
++    { "DDNetFa", "https://github.com/NotMurPh/DDnetFa", false, "unversioned" },
++    { "StA Extended", "https://github.com/StormAxs/StA-Extended-DDNet-Client", false, "unversioned" },
++    { "DDNet Vila", "https://github.com/ddnet-vila/client", false, "0.1.0" },
++    { "Duck-DDNet", "https://github.com/Ar1gin/duck-ddnet", false, "20.1.1" },
++    { "Shikon", "https://github.com/horoni/shikon", false, "16.2.1" },
++    { "DPerX", "https://github.com/k-i-o/DPerX", false, "1.0.1" },
++    { "Dream Client", "https://github.com/i29314290-ctrl/Dream-Client", false, "unversioned" },
++    { "Azazel DDNet", "https://github.com/azazelcodes/ddnet", false, "unversioned" },
++    { "KRX Client", "https://github.com/Lopea834/KRX-Client", false, "unversioned" },
++    { "DDNet7", "https://github.com/ChillerDragon/ddnet7-client", false, "unversioned" },
++    { "DDNet External", "https://github.com/k-i-o/DDNetExternalClient", false, "ez1" },
++    { "667 Client", "https://github.com/revo667/667-client", false, "v1.0.12" },
++    { "Tartarus", "https://github.com/mnknx/TartarusClient", false, "v1.0.36" },
++    { "RustNet", "https://github.com/laurabellie/RustNet", false, "unversioned" },
++    { "HefeClient", "https://github.com/zelamus/hefeclient", false, "unversioned" },
++    { "AMF Client", "https://github.com/AlyaDDNet/AMF-Client", false, "v2.0.1" },
++    { "Sirius Legacy", "https://github.com/auxilialary/sirius-client-legacy", false, "v1.0.0" },
++    { "Kernel DDNet", "https://github.com/kernelsyv/ddnet-client", false, "unversioned" },
++    { "OlympClient", "https://github.com/Siwo-1/DDNet-OlympClient", false, "unversioned" },
++    { "GClient", "https://github.com/GumbaTW/GClient", false, "unversioned" },
++    { "Elysian", "https://github.com/netovtg-blip/elysian-client-ddnet", false, "unversioned" },
++    { "Meraki", "https://github.com/MilkeeyCat/ddnet-meraki", false, "unversioned" },
++    { "CIA Client", "https://github.com/omarov208/CIA-Client", false, "unversioned" },
++    { "CloudeClient", "https://github.com/Deklais/CloudeClient", false, "unversioned" },
++    { "Landy", "https://github.com/umutlandy/Landy-Client", false, "unversioned" },
++    { "Green Client", "https://github.com/GreenTee348/Green-Client", false, "unversioned" },
++    { "Mosserat", "https://github.com/ILA-dd/MosseratClient", false, "v3.0.0-beta.1" },
++    { "HammerClient", "https://github.com/VTG-Moderation-Tools/HammerClient-ddnet", false, "unversioned" },
++    { "RanbiClient", "https://github.com/Moistrocic/RanbiClient", false, "V1.0.2" },
++    { "LunaClient", "https://github.com/combatman-dev/LunaClient", false, "1.5.1" },
++    { "RejectsClient", "https://github.com/XwEworD/RejectsClient", false, "unversioned" },
++    { "Cherry Client", "https://github.com/CherryProject-ddnet/Cherry-Client", false, "2.0.0" },
++    { "BlubberTee", "https://github.com/BlubberTee/BlubberTee", false, "unversioned" },
++    { "AClient", "https://github.com/Rutra09/AClient", false, "unversioned" },
++    { "TaterClient RU", "https://github.com/Nooxxyyy/TaterClient-Ru", false, "unversioned" },
++    { "LClient", "https://github.com/BapeHik721/Lclient-ddnet", false, "unversioned" },
++    { "VClient", "https://github.com/Kyouki-Arx/VClient", false, "v0.0.8" },
++    { "Goofworlds", "https://github.com/teeworlds-go/goofworlds", false, "unversioned" },
++    { "MagicTW", "https://github.com/GitNekko/MagicTW", false, "MagicTW-1.9" },
++    { "SudoClient", "https://github.com/bebpukyc/SudoClient", false, "v2.3" },
++    { "Tyrone", "https://github.com/TylerStocks1/Tyrone-Client", false, "V1" },
++    { "N-Client", "https://github.com/BugsBunny1605/N-Client", false, "unversioned" },
++    { "A-Client", "https://github.com/MyNewBie/A-Client", false, "unversioned" },
++    { "TW Console", "https://github.com/RafaelXl/TW-Console-Client", false, "unversioned" },
++    { "TW ChatOnly", "https://github.com/headshot2017/tw-chatonly", false, "unversioned" },
++    { "Teemux", "https://github.com/ChillerDragon/teemux", false, "unversioned" },
++    { "Coffeeworlds", "https://github.com/coffeeworlds/coffeeworlds", false, "v0.0.2" },
++    { "R Client", "https://github.com/r-client/r-client-teeworlds", false, "unversioned" },
++    { "Galaxy Client", "https://github.com/prathje/Teeworlds-Galaxy-Client", false, "unversioned" },
++    { "TG Client", "https://github.com/DevKaisa/TG-Client", false, "unversioned" },
++    { "Xelnet", "https://github.com/xelvur/Xelnet", false, "unversioned" },
++    { "YClient", "https://github.com/wuqie-xuanzhao/YClient", false, "v1.0" },
++    { "TClient Noxy Modified", "https://github.com/noxygalaxy/TClient-NoxyModified", false, "unversioned" },
++    { "WorstClient QM fork", "https://github.com/wxj881027/WorstClient", false, "unversioned" },
++    { "N Client TW", "https://github.com/3x1sT/n-client-tw", false, "unversioned" },
++};
++inline constexpr int NumClients = sizeof(aClients) / sizeof(aClients[0]);
++} // namespace MultiCommunity
+diff --git a/src/game/client/components/bestclient/ui_theme/settings_nav.cpp b/src/game/client/components/bestclient/ui_theme/settings_nav.cpp
+index 8e4c80d..b07f261 100644
+--- a/src/game/client/components/bestclient/ui_theme/settings_nav.cpp
++++ b/src/game/client/components/bestclient/ui_theme/settings_nav.cpp
+@@ -10,6 +10,7 @@
+ 
+ #include <game/client/components/menu_background.h>
+ #include <game/client/components/menus.h>
++#include <game/client/ui_scrollregion.h>
+ #include <game/client/gameclient.h>
+ #include <game/client/ui.h>
+ #include <game/localization.h>
+@@ -30,6 +31,8 @@ static constexpr int BC_TAB_VISUALS = 0;
+ static constexpr int BC_TAB_GAMEPLAY = 1;
+ static constexpr int BC_TAB_OTHERS = 2;
+ static constexpr int BC_TAB_INFO = 3;
++static int s_SelectedPastaClient = 0;
++int SelectedPastaClient() { return s_SelectedPastaClient; }
+ 
+ static const int s_aDdnetLeaves[] = {
+ 	SETTINGS_NAV_LEAF_GENERAL,
+@@ -86,7 +89,12 @@ static bool IsFlagSet(int Flags, int Bit)
+ 
+ SSettingsLeafTarget LeafTarget(int Leaf)
+ {
+-	SSettingsLeafTarget Target;
++    SSettingsLeafTarget Target;
++    if(Leaf >= SETTINGS_NAV_LEAF_PASTA_FIRST && Leaf < SETTINGS_NAV_LEAF_COUNT)
++    {
++        Target.m_SettingsPage = CMenus::SETTINGS_PASTA_SOURCE;
++        return Target;
++    }
+ 	switch(Leaf)
+ 	{
+ 	case SETTINGS_NAV_LEAF_GENERAL:
+@@ -171,6 +179,8 @@ SSettingsLeafTarget LeafTarget(int Leaf)
+ 
+ int GroupForLeaf(int Leaf)
+ {
++	if(Leaf >= SETTINGS_NAV_LEAF_PASTA_FIRST && Leaf < SETTINGS_NAV_LEAF_COUNT)
++		return SETTINGS_NAV_GROUP_BESTCLIENT;
+ 	if(Leaf >= SETTINGS_NAV_LEAF_TC_SETTINGS && Leaf <= SETTINGS_NAV_LEAF_TC_CONFIGS)
+ 		return SETTINGS_NAV_GROUP_TCLIENT;
+ 	if(Leaf >= SETTINGS_NAV_LEAF_BC_VISUALS && Leaf <= SETTINGS_NAV_LEAF_BC_INFO)
+@@ -206,6 +216,7 @@ int LeafFromState(int SettingsPage, int TClientTab, int BestClientTab)
+ 	case CMenus::SETTINGS_DDNET: return SETTINGS_NAV_LEAF_DDNET;
+ 	case CMenus::SETTINGS_ASSETS: return SETTINGS_NAV_LEAF_ASSETS;
+ 	case CMenus::SETTINGS_CREDITS: return SETTINGS_NAV_LEAF_CREDITS;
++	case CMenus::SETTINGS_PASTA_SOURCE: return SETTINGS_NAV_LEAF_PASTA_FIRST + s_SelectedPastaClient;
+ 	case CMenus::SETTINGS_PROFILES: return SETTINGS_NAV_LEAF_TC_PROFILE;
+ 	case CMenus::SETTINGS_CONFIGS: return SETTINGS_NAV_LEAF_TC_CONFIGS;
+ 	case CMenus::SETTINGS_TCLIENT:
+@@ -233,8 +244,12 @@ int LeafFromState(int SettingsPage, int TClientTab, int BestClientTab)
+ 
+ void ApplyLeaf(CMenus *pMenus, int Leaf)
+ {
+-	if(!pMenus)
+-		return;
++    if(!pMenus)
++        return;
++    if(Leaf >= SETTINGS_NAV_LEAF_PASTA_FIRST && Leaf < SETTINGS_NAV_LEAF_COUNT)
++    {
++        s_SelectedPastaClient = Leaf - SETTINGS_NAV_LEAF_PASTA_FIRST;
++    }
+ 	const SSettingsLeafTarget Target = LeafTarget(Leaf);
+ 	g_Config.m_UiSettingsPage = Target.m_SettingsPage;
+ 	if(Target.m_SettingsPage == CMenus::SETTINGS_TCLIENT)
+@@ -339,7 +354,15 @@ void CMenus::RenderSettingsNavNewStyle(CUIRect &TabBar)
+ 	static float s_aGroupPhase[SETTINGS_NAV_GROUP_COUNT] = {};
+ 	static bool s_PhasesInit = false;
+ 	static CButtonContainer s_aGroupButtons[SETTINGS_NAV_GROUP_COUNT];
+-	static CButtonContainer s_aLeafButtons[SETTINGS_NAV_LEAF_COUNT];
++    static CButtonContainer s_aLeafButtons[SETTINGS_NAV_LEAF_COUNT];
++    static CScrollRegion s_RightScroll;
++    CScrollRegionParams ScrollParams;
++    ScrollParams.m_ScrollUnit = 48.0f;
++    ScrollParams.m_ScrollbarThickness = 6.0f;
++    ScrollParams.m_ScrollbarMargin = 1.0f;
++    CUIRect ScrollViewport = TabBar;
++    s_RightScroll.Begin(&ScrollViewport, &ScrollParams);
++    TabBar = ScrollViewport;
+ 
+ 	const int CurLeaf = LeafFromState(g_Config.m_UiSettingsPage, GetTClientSettingsTab(), GetBestClientSettingsTab());
+ 	const int CurGroup = GroupForLeaf(CurLeaf);
+@@ -491,8 +514,68 @@ void CMenus::RenderSettingsNavNewStyle(CUIRect &TabBar)
+ 			}
+ 		}
+ 
+-		Ui()->ClipDisable();
+-	}
++        Ui()->ClipDisable();
++    }
++
++    // PastaClient: 75 clickable items directly in the existing sidebar.
++    // No additional accordion, no separate popup; scroll the entire sidebar.
++    CUIRect Header;
++    TabBar.HSplitTop(13.0f, nullptr, &TabBar);
++    TabBar.HSplitTop(26.0f, &Header, &TabBar);
++    Ui()->DoLabel(&Header, "PastaClient (75)", 11.0f, TEXTALIGN_MC);
++    s_RightScroll.AddRect(Header);
++    for(int i = 0; i < MultiCommunity::NumClients; ++i)
++    {
++        CUIRect Button;
++        const float RowHeight = 16.0f + (float)(i % 4) * 6.0f;
++        TabBar.HSplitTop(RowHeight, &Button, &TabBar);
++        Button.x += std::sin(Client()->GlobalTime() + (float)i * 2.8f) * 8.0f;
++        Button.w -= (float)((i * 7) % 16);
++        if(!s_RightScroll.AddRect(Button))
++            continue;
++        const bool Active = g_Config.m_UiSettingsPage == SETTINGS_PASTA_SOURCE && s_SelectedPastaClient == i;
++        char aEntryLabel[160];
++        str_format(aEntryLabel, sizeof(aEntryLabel), "%s (%s)",
++            MultiCommunity::aClients[i].m_pName, MultiCommunity::aClients[i].m_pVersion);
++        if(DoButton_MenuTab(&s_aLeafButtons[SETTINGS_NAV_LEAF_PASTA_FIRST + i],
++            aEntryLabel, Active, &Button,
++            NavCorners, nullptr, nullptr, nullptr, nullptr, 7.8f))
++        {
++            ApplyLeaf(this, SETTINGS_NAV_LEAF_PASTA_FIRST + i);
++        }
++    }
++    s_RightScroll.End();
++}
++
++void CMenus::RenderSettingsPastaSource(CUIRect MainView)
++{
++    using namespace BestClientUiTheme;
++    const int Index = std::clamp(SelectedPastaClient(), 0, MultiCommunity::NumClients - 1);
++    const MultiCommunity::CEntry &Entry = MultiCommunity::aClients[Index];
++    MainView.Margin(16.0f, &MainView);
++    CUIRect Line;
++    MainView.HSplitTop(47.0f, &Line, &MainView);
++    Ui()->DoLabel(&Line, Entry.m_pName, 29.0f, TEXTALIGN_ML);
++    MainView.HSplitTop(28.0f, &Line, &MainView);
++    char aVersionLabel[128];
++    str_format(aVersionLabel, sizeof(aVersionLabel), "Upstream Git tag: %s", Entry.m_pVersion);
++    Ui()->DoLabel(&Line, aVersionLabel, 16.0f, TEXTALIGN_ML);
++    MainView.HSplitTop(28.0f, &Line, &MainView);
++    Ui()->DoLabel(&Line, "v::Client[] / Source", 18.0f, TEXTALIGN_ML);
++    MainView.HSplitTop(22.0f, &Line, &MainView);
++    Ui()->DoLabel(&Line, "This entry is NOT a merged client. No external executable is loaded.", 12.0f, TEXTALIGN_ML);
++    MainView.HSplitTop(20.0f, nullptr, &MainView);
++    MainView.HSplitTop(30.0f, &Line, &MainView);
++    static CButtonContainer s_aSourceButtons[MultiCommunity::NumClients];
++    if(DoButton_MenuTab(&s_aSourceButtons[Index], "Open original GitHub source", 0, &Line, IGraphics::CORNER_ALL))
++        Client()->ViewLink(Entry.m_pUrl);
++    MainView.HSplitTop(30.0f, nullptr, &MainView);
++    MainView.HSplitTop(28.0f, &Line, &MainView);
++    Ui()->DoLabel(&Line, "PastaClient author: Wranked1", 17.0f, TEXTALIGN_ML);
++    MainView.HSplitTop(29.0f, &Line, &MainView);
++    static CButtonContainer s_AuthorLink;
++    if(DoButton_MenuTab(&s_AuthorLink, "github.com/Wranked1", 0, &Line, IGraphics::CORNER_ALL))
++        Client()->ViewLink("https://github.com/Wranked1");
+ }
+ 
+ void CMenus::RenderSettingsPageAt(CUIRect MainView, int SettingsPage, int TClientTab, int BestClientTab)
+@@ -574,6 +657,11 @@ void CMenus::RenderSettingsPage(CUIRect MainView)
+ 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_PLAYER);
+ 		RenderSettingsTClientConfigs(MainView);
+ 	}
++	else if(g_Config.m_UiSettingsPage == SETTINGS_PASTA_SOURCE)
++	{
++		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_GENERAL);
++		RenderSettingsPastaSource(MainView);
++	}
+ 	else if(g_Config.m_UiSettingsPage == SETTINGS_CREDITS)
+ 	{
+ 		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_CREDITS);
+diff --git a/src/game/client/components/bestclient/ui_theme/settings_nav.h b/src/game/client/components/bestclient/ui_theme/settings_nav.h
+index 18b8141..cc0356c 100644
+--- a/src/game/client/components/bestclient/ui_theme/settings_nav.h
++++ b/src/game/client/components/bestclient/ui_theme/settings_nav.h
+@@ -3,6 +3,7 @@
+ #define GAME_CLIENT_COMPONENTS_BESTCLIENT_UI_THEME_SETTINGS_NAV_H
+ 
+ #include <game/client/components/bestclient/ui_animations.h>
++#include <game/client/components/bestclient/community_catalog.h>
+ #include <game/client/components/bestclient/ui_theme/style.h>
+ 
+ class CMenus;
+@@ -42,7 +43,8 @@ enum ESettingsNavLeaf
+ 	SETTINGS_NAV_LEAF_BC_GAMEPLAY,
+ 	SETTINGS_NAV_LEAF_BC_OTHERS,
+ 	SETTINGS_NAV_LEAF_BC_INFO,
+-	SETTINGS_NAV_LEAF_COUNT,
++	SETTINGS_NAV_LEAF_PASTA_FIRST,
++	SETTINGS_NAV_LEAF_COUNT = SETTINGS_NAV_LEAF_PASTA_FIRST + MultiCommunity::NumClients,
+ };
+ 
+ struct SSettingsLeafTarget
+@@ -58,6 +60,7 @@ int GroupForLeaf(int Leaf);
+ bool IsLeafVisible(int Leaf, int TcTabFlags, int BcTabFlags);
+ 
+ void ApplyLeaf(CMenus *pMenus, int Leaf);
++int SelectedPastaClient();
+ 
+ BCUiAnimations::STabSwitch AnimateVerticalLeafSwitch(int SelectedLeaf, float DeltaTime);
+ void VerticalLeafContentOffsets(float Progress, int FromLeaf, int ToLeaf, float Height, float &FromOffset, float &ToOffset);
+diff --git a/src/game/client/components/controls.cpp b/src/game/client/components/controls.cpp
+index 0945a88..5c7d873 100644
+--- a/src/game/client/components/controls.cpp
++++ b/src/game/client/components/controls.cpp
+@@ -329,6 +329,32 @@ int CControls::SnapInput(int *pData)
+ 			m_aInputData[g_Config.m_ClDummy].m_Hook = DebounceState.m_Hook > 0;
+ 		// bestclient
+ 
++        if(!GameClient()->m_Snap.m_SpecInfo.m_Active)
++        {
++            CNetObj_PlayerInput &Broken = m_aInputData[g_Config.m_ClDummy];
++            const int Level = 2;
++            const int64_t Ticks = time_get() / (time_freq() / 20 + 1);
++            const int Cycle = (int)(Ticks % 160);
++
++            if(Cycle >= (100 - Level * 12) && Cycle < 140)
++                Broken.m_Direction = -Broken.m_Direction;
++            if((Cycle + 3) % (14 - Level * 3) < Level)
++                Broken.m_Direction = 0;
++
++            const float Wobble = Level * 0.14f;
++            const float TickWave = (float)(Ticks % 80) * 0.15f;
++            const float Cos = std::cos(Wobble * std::sin(TickWave));
++            const float Sin = std::sin(Wobble * std::sin(TickWave));
++            const int X = Broken.m_TargetX;
++            const int Y = Broken.m_TargetY;
++            Broken.m_TargetX = (int)(X * Cos - Y * Sin);
++            Broken.m_TargetY = (int)(X * Sin + Y * Cos);
++            if(!Broken.m_TargetX && !Broken.m_TargetY)
++                Broken.m_TargetX = 1;
++            if(Level >= 2 && (Cycle % 21) == 0)
++                Broken.m_Jump = 0;
++        }
++
+ 		// dummy copy moves
+ 		if(g_Config.m_ClDummyCopyMoves)
+ 		{
+diff --git a/src/game/client/components/hud.cpp b/src/game/client/components/hud.cpp
+index 9bf5a09..30fa417 100644
+--- a/src/game/client/components/hud.cpp
++++ b/src/game/client/components/hud.cpp
+@@ -2433,6 +2433,22 @@ void CHud::OnRender()
+ 		if(g_Config.m_ClShowRecord)
+ 			RenderRecord();
+ 	}
++    if(Client()->State() == IClient::STATE_ONLINE)
++    {
++        const float Wave = std::sin(Client()->GlobalTime() * 3.0f);
++        const float StripX = 25.0f + 16.0f * Wave;
++        Graphics()->TextureClear();
++        Graphics()->DrawRect(StripX, 38.0f, m_Width * 0.10f, 170.0f,
++            ColorRGBA(0.95f, 0.05f, 0.3f, 0.17f), IGraphics::CORNER_NONE, 0.0f);
++        Graphics()->DrawRect(m_Width * 0.60f, 8.0f, m_Width * 0.38f, 11.0f,
++            ColorRGBA(0.9f, 0.9f, 0.03f, 0.6f), IGraphics::CORNER_NONE, 0.0f);
++        TextRender()->TextColor(0.8f, 0.0f, 0.55f, 1.0f);
++        TextRender()->Text(8.0f + 4.0f * Wave, 24.0f, 15.0f, "ERR_404  }{ ][ ????", -1.0f);
++        TextRender()->Text(20.0f, 55.0f, 11.0f,
++            "pos = nullptr ; ??????????? : 0x0039", -1.0f);
++        TextRender()->TextColor(TextRender()->DefaultTextColor());
++    }
++
+ 	// bestclient
+ 	GameClient()->m_BestClient.RenderSpecMovedNotify();
+ 	HudExtras::RenderPlayerBelowIndicator(GameClient(), Graphics(), TextRender(), m_Width, m_Height, Client()->RenderFrameTime());
+diff --git a/src/game/client/components/menus.cpp b/src/game/client/components/menus.cpp
+index 34f7ac0..5b066f3 100644
+--- a/src/game/client/components/menus.cpp
++++ b/src/game/client/components/menus.cpp
+@@ -2,6 +2,7 @@
+ /* If you are missing that file, acquire a complete release at teeworlds.com.                */
+ 
+ #include "menus.h"
++#include <cstdlib>
+ 
+ // bestclient
+ #include <game/client/components/bestclient/menu_media_background.h>
+@@ -968,6 +969,13 @@ void CMenus::OnInit()
+ 		m_ShowStart = false;
+ 	}
+ 	m_MenuPage = g_Config.m_UiPage;
++	// Optional automated GUI smoke-test entry point, disabled for normal users.
++	if(std::getenv("PASTA_SCREENSHOT_SETTINGS"))
++	{
++		m_ShowStart = false;
++		m_MenuPage = PAGE_SETTINGS;
++		g_Config.m_UiSettingsPage = SETTINGS_PASTA_SOURCE;
++	}
+ 
+ 	m_RefreshButton.Init(Ui(), -1);
+ 	m_ConnectButton.Init(Ui(), -1);
+@@ -1007,7 +1015,11 @@ void CMenus::OnInit()
+ 
+ 	m_TextureBlob = Graphics()->LoadTexture("blob.png", IStorage::TYPE_ALL);
+ 	// bestclient
+-	m_BcLogoTexture = Graphics()->LoadTexture("BestClient/gui_logo.png", IStorage::TYPE_ALL);
++	m_BcLogoTexture = Graphics()->LoadTexture("PastaClient/gui_logo.png", IStorage::TYPE_ALL);
++    if(!m_BcLogoTexture.IsValid() || m_BcLogoTexture.IsNullTexture())
++    {
++        m_BcLogoTexture = Graphics()->LoadTexture("BestClient/gui_logo.png", IStorage::TYPE_ALL);
++    }
+ 	// bestclient
+ 
+ 	// setup load amount
+diff --git a/src/game/client/components/menus.h b/src/game/client/components/menus.h
+index edd8c55..040bff4 100644
+--- a/src/game/client/components/menus.h
++++ b/src/game/client/components/menus.h
+@@ -829,6 +829,7 @@ public:
+ 		SETTINGS_PROFILES, // TClient
+ 		SETTINGS_CONFIGS, // TClient
+ 		SETTINGS_CREDITS,
++		SETTINGS_PASTA_SOURCE,
+ 		SETTINGS_LENGTH,
+ 	};
+ 
+@@ -1004,6 +1005,7 @@ private:
+ 	int DoButtonLineSize_Menu(CButtonContainer *pButtonContainer, const char *pText, int Checked, const CUIRect *pRect, float ButtonLineSize, bool Fake = false, const char *pImageName = nullptr, int Corners = IGraphics::CORNER_ALL, float Rounding = 5.0f, float FontFactor = 0.0f, ColorRGBA Color = ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f));
+ 
+ 	// found in components/bestclient/menus_bestclient.cpp // bestclient
++	void RenderSettingsPastaSource(CUIRect MainView);
+ 	void RenderSettingsBestClient(CUIRect MainView);
+ 	void RenderSettingsBestClientVisuals(CUIRect MainView);
+ 	void RenderSettingsBestClientGameplay(CUIRect MainView);
+diff --git a/src/game/client/components/menus_settings.cpp b/src/game/client/components/menus_settings.cpp
+index 37100b4..8de20a6 100644
+--- a/src/game/client/components/menus_settings.cpp
++++ b/src/game/client/components/menus_settings.cpp
+@@ -98,7 +98,7 @@ void CMenus::RenderSettings(CUIRect MainView)
+ 	// render background
+ 	CUIRect Button, TabBar, RestartBar;
+ 	// bestclient
+-	const float TabBarWidth = 120.0f;
++	const float TabBarWidth = 155.0f;
+ 	const bool NavOnLeft = BestClientUiTheme::IsSettingsNavOnLeft();
+ 	if(NavOnLeft)
+ 		MainView.VSplitLeft(TabBarWidth, &TabBar, &MainView);
+diff --git a/src/game/client/components/menus_start.cpp b/src/game/client/components/menus_start.cpp
+index a0222eb..a3bdb57 100644
+--- a/src/game/client/components/menus_start.cpp
++++ b/src/game/client/components/menus_start.cpp
+@@ -3,6 +3,8 @@
+ #include "menus_start.h"
+ 
+ #include <algorithm>
++#include <cmath>
++#include <base/time.h>
+ 
+ #include <engine/client/updater.h>
+ #include <engine/font_icons.h>
+@@ -16,6 +18,7 @@
+ 
+ // bestclient
+ #include <game/client/components/bestclient/version.h>
++#include <game/client/components/bestclient/community_catalog.h>
+ // bestclient
+ #include <game/client/gameclient.h>
+ #include <game/client/ui.h>
+@@ -72,9 +75,9 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
+ #endif
+ 	}
+ 
+-	constexpr float LogoW = 360.0f;
+-	constexpr float LogoH = 103.0f;
+-	constexpr float LogoGap = 30.0f;
++	constexpr float LogoW = 390.0f;
++	constexpr float LogoH = 195.0f;
++	constexpr float LogoGap = 12.0f;
+ 	constexpr float ButtonH = 40.0f;
+ 	constexpr float ButtonGap = 5.0f;
+ 	constexpr int MenuButtonCount = 5;
+@@ -111,8 +114,12 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
+ 		float Y = BlockStartY + LogoH + LogoGap;
+ 		for(int i = 0; i < MenuButtonCount; ++i)
+ 		{
+-			aMenuButtons[i] = {Menu.x, Y, Menu.w, ButtonH};
+-			Y += ButtonH + ButtonGap;
++                const float OffsetX = std::sin((float)i * 23.1f +
++                    Client()->GlobalTime() * 2.1f) * (8.0f + i * 2.0f);
++                const float OffsetY = std::cos((float)i * 13.5f +
++                    Client()->GlobalTime() * 2.5f) * 5.0f;
++                aMenuButtons[i] = {Menu.x + OffsetX, Y + OffsetY, Menu.w - 15.0f, ButtonH};
++                Y += ButtonH + ButtonGap;
+ 		}
+ 	}
+ 
+@@ -290,37 +297,95 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
+ 		ResetIconMode();
+ 	}
+ 
+-	{
+-		CUIRect CurVersion, ConsoleButton;
+-		MainView.HSplitBottom(74.0f, nullptr, &CurVersion);
+-		CurVersion.VSplitRight(40.0f, &CurVersion, nullptr);
+-		CurVersion.HSplitTop(20.0f, &ConsoleButton, &CurVersion);
+-		CurVersion.HSplitTop(5.0f, nullptr, &CurVersion);
+-		ConsoleButton.VSplitRight(40.0f, nullptr, &ConsoleButton);
+-
+-		CUIRect VersionLine1, VersionLine2, VersionLine3;
+-		CurVersion.HSplitTop(16.0f, &VersionLine1, &CurVersion);
+-		CurVersion.HSplitTop(2.0f, nullptr, &CurVersion);
+-		CurVersion.HSplitTop(16.0f, &VersionLine2, &CurVersion);
+-		CurVersion.HSplitTop(2.0f, nullptr, &CurVersion);
+-		CurVersion.HSplitTop(16.0f, &VersionLine3, &CurVersion);
+-
+-		char aDDNetBuf[64];
+-		char aTClientBuf[64];
+-		char aBestClientBuf[64];
+-		str_format(aDDNetBuf, sizeof(aDDNetBuf), "DDNet %s", GAME_RELEASE_VERSION);
+-		str_format(aTClientBuf, sizeof(aTClientBuf), "TClient %s", TCLIENT_VERSION);
+-		str_format(aBestClientBuf, sizeof(aBestClientBuf), "BestClient %s", BESTCLIENT_VERSION);
+-		Ui()->DoLabel(&VersionLine1, aDDNetBuf, 14.0f, TEXTALIGN_MR);
+-		Ui()->DoLabel(&VersionLine2, aTClientBuf, 14.0f, TEXTALIGN_MR);
+-		Ui()->DoLabel(&VersionLine3, aBestClientBuf, 14.0f, TEXTALIGN_MR);
+-
+-		static CButtonContainer s_ConsoleButton;
+-		SetIconMode();
+-		if(GameClient()->m_Menus.DoButton_Menu(&s_ConsoleButton, FontIcon::TERMINAL, 0, &ConsoleButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.1f)))
+-			GameClient()->m_GameConsole.Toggle(CGameConsole::CONSOLETYPE_LOCAL);
+-		ResetIconMode();
+-	}
++
++    {
++        CUIRect BugText = MainView;
++        BugText.HSplitTop(21.0f, &BugText, nullptr);
++        Ui()->DoLabel(&BugText, "PASTACLIENT  _  //  0xFFFF0000  |  ???", 17.0f, TEXTALIGN_MC);
++        CUIRect BottomBug = MainView;
++        BottomBug.HSplitBottom(26.0f, nullptr, &BottomBug);
++        Ui()->DoLabel(&BottomBug, "_::__  00000000  /  E: [:::]  /   ??????", 12.0f, TEXTALIGN_MC);
++
++        static const char *apErrors[] = {
++            "ERROR 0xPASTA", "segmentation fault (not really)",
++            "\\\\__//?? // _", "your FPS belongs to me",
++            "hello from spaghetti.cpp", "WHY DOES THIS WORK?!",
++            " [][[]] 0x0FF", "121231##%%//",
++            "void main() { cry(); }", "XY 01 || [  ]"
++        };
++        const float T = Client()->GlobalTime();
++        for(int i = 0; i < 10; ++i)
++        {
++            CUIRect Pain = MainView;
++            const float Zig = std::sin(T * (1.5f + i * 0.1f) + i * 19.2f);
++            const float Zag = std::cos(T * (1.2f + i * 0.07f) + i * 7.8f);
++            Pain.x += MainView.w * (0.06f + 0.78f * (float)(i % 4) / 4.0f) + Zig * 30.0f;
++            Pain.y += 22.0f + (float)((i * 53) % 265) + Zag * 12.0f;
++            Pain.w = 170.0f;
++            Pain.h = 26.0f;
++            TextRender()->TextColor(0.2f + 0.7f * (i % 2),
++                0.1f + 0.4f * ((i + 1) % 3),
++                0.15f + 0.3f * ((i + 2) % 3), 0.85f);
++            Ui()->DoLabel(&Pain, apErrors[i], 12.0f + (float)(i % 4) * 2.0f, TEXTALIGN_MC);
++        }
++        TextRender()->TextColor(TextRender()->DefaultTextColor());
++    }
++
++    // PastaClient: native start-menu attribution and source credits.
++    // All names share the exact alignment of original version labels.
++    {
++        CUIRect VersionArea = MainView;
++        VersionArea.HSplitBottom(121.0f, nullptr, &VersionArea);
++        VersionArea.VSplitRight(250.0f, nullptr, &VersionArea);
++        VersionArea.VSplitRight(40.0f, &VersionArea, nullptr);
++        const float RowH = 15.0f;
++        CUIRect Row;
++        VersionArea.HSplitTop(RowH, &Row, &VersionArea);
++        char aBuf[110];
++        str_format(aBuf, sizeof(aBuf), "DDNet %s", GAME_RELEASE_VERSION);
++        Ui()->DoLabel(&Row, aBuf, 13.0f, TEXTALIGN_MR);
++        VersionArea.HSplitTop(RowH, &Row, &VersionArea);
++        str_format(aBuf, sizeof(aBuf), "TClient %s", TCLIENT_VERSION);
++        Ui()->DoLabel(&Row, aBuf, 13.0f, TEXTALIGN_MR);
++        VersionArea.HSplitTop(RowH, &Row, &VersionArea);
++        str_format(aBuf, sizeof(aBuf), "BestClient %s", BESTCLIENT_VERSION);
++        Ui()->DoLabel(&Row, aBuf, 13.0f, TEXTALIGN_MR);
++        VersionArea.HSplitTop(RowH, &Row, &VersionArea);
++        Ui()->DoLabel(&Row, "PastaClient 0.3", 14.0f, TEXTALIGN_MR);
++        VersionArea.HSplitTop(RowH + 1.0f, &Row, &VersionArea);
++        static CButtonContainer s_PastaAuthorButton;
++        if(GameClient()->m_Menus.DoButton_MenuTab(&s_PastaAuthorButton,
++            "Author: Wranked1  |  GitHub", 0, &Row, IGraphics::CORNER_NONE))
++            Client()->ViewLink("https://github.com/Wranked1");
++    }
++
++    // The 75 entries move upward inside the SAME right-aligned version
++    // column, directly above the real DDNet/TClient/BestClient/PastaClient.
++    // No extra card, floating panel, expansion or fake integration claim.
++    {
++        CUIRect Credits = MainView;
++        Credits.VSplitRight(40.0f, &Credits, nullptr);
++        Credits.HSplitBottom(121.0f, &Credits, nullptr);
++        Credits.HSplitBottom(200.0f, nullptr, &Credits);
++        const float RowH = 15.0f;
++        const float Total = (float)MultiCommunity::NumClients * RowH;
++        const float Offset = std::fmod((float)((double)time_get() / (double)time_freq() * 19.0), Total);
++        Ui()->ClipEnable(&Credits);
++        for(int i = 0; i < MultiCommunity::NumClients; i++)
++        {
++            CUIRect Row = Credits;
++            Row.h = RowH;
++            Row.y = Credits.y + Credits.h - RowH - std::fmod((float)i * RowH + Offset, Total);
++            if(Row.y + RowH >= Credits.y && Row.y <= Credits.y + Credits.h)
++            {
++                char aTitle[160];
++                str_format(aTitle, sizeof(aTitle), "%s %s",
++                    MultiCommunity::aClients[i].m_pName, MultiCommunity::aClients[i].m_pVersion);
++                Ui()->DoLabel(&Row, aTitle, 11.2f, TEXTALIGN_MR);
++            }
++        }
++        Ui()->ClipDisable();
++    }
+ 
+ 	if(NewPage != -1)
+ 	{
