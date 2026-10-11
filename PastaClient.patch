@@ -247,7 +247,7 @@ index 0000000..2a4bbe7
 +inline constexpr int NumClients = sizeof(aClients) / sizeof(aClients[0]);
 +} // namespace MultiCommunity
 diff --git a/src/game/client/components/bestclient/ui_theme/settings_nav.cpp b/src/game/client/components/bestclient/ui_theme/settings_nav.cpp
-index 8e4c80d..b07f261 100644
+index 8e4c80d..2a28670 100644
 --- a/src/game/client/components/bestclient/ui_theme/settings_nav.cpp
 +++ b/src/game/client/components/bestclient/ui_theme/settings_nav.cpp
 @@ -10,6 +10,7 @@
@@ -313,24 +313,17 @@ index 8e4c80d..b07f261 100644
  	const SSettingsLeafTarget Target = LeafTarget(Leaf);
  	g_Config.m_UiSettingsPage = Target.m_SettingsPage;
  	if(Target.m_SettingsPage == CMenus::SETTINGS_TCLIENT)
-@@ -339,7 +354,15 @@ void CMenus::RenderSettingsNavNewStyle(CUIRect &TabBar)
+@@ -339,7 +354,8 @@ void CMenus::RenderSettingsNavNewStyle(CUIRect &TabBar)
  	static float s_aGroupPhase[SETTINGS_NAV_GROUP_COUNT] = {};
  	static bool s_PhasesInit = false;
  	static CButtonContainer s_aGroupButtons[SETTINGS_NAV_GROUP_COUNT];
 -	static CButtonContainer s_aLeafButtons[SETTINGS_NAV_LEAF_COUNT];
 +    static CButtonContainer s_aLeafButtons[SETTINGS_NAV_LEAF_COUNT];
-+    static CScrollRegion s_RightScroll;
-+    CScrollRegionParams ScrollParams;
-+    ScrollParams.m_ScrollUnit = 48.0f;
-+    ScrollParams.m_ScrollbarThickness = 6.0f;
-+    ScrollParams.m_ScrollbarMargin = 1.0f;
-+    CUIRect ScrollViewport = TabBar;
-+    s_RightScroll.Begin(&ScrollViewport, &ScrollParams);
-+    TabBar = ScrollViewport;
++
  
  	const int CurLeaf = LeafFromState(g_Config.m_UiSettingsPage, GetTClientSettingsTab(), GetBestClientSettingsTab());
  	const int CurGroup = GroupForLeaf(CurLeaf);
-@@ -491,8 +514,68 @@ void CMenus::RenderSettingsNavNewStyle(CUIRect &TabBar)
+@@ -491,8 +507,64 @@ void CMenus::RenderSettingsNavNewStyle(CUIRect &TabBar)
  			}
  		}
  
@@ -339,34 +332,30 @@ index 8e4c80d..b07f261 100644
 +        Ui()->ClipDisable();
 +    }
 +
-+    // PastaClient: 75 clickable items directly in the existing sidebar.
-+    // No additional accordion, no separate popup; scroll the entire sidebar.
++
 +    CUIRect Header;
-+    TabBar.HSplitTop(13.0f, nullptr, &TabBar);
-+    TabBar.HSplitTop(26.0f, &Header, &TabBar);
-+    Ui()->DoLabel(&Header, "PastaClient (75)", 11.0f, TEXTALIGN_MC);
-+    s_RightScroll.AddRect(Header);
-+    for(int i = 0; i < MultiCommunity::NumClients; ++i)
++    TabBar.HSplitTop(10.0f, nullptr, &TabBar);
++    TabBar.HSplitTop(35.0f, &Header, &TabBar);
++    Header.x -= 15.0f;
++    Header.w += 220.0f;
++    Ui()->DoLabel(&Header, "PastaClient (75)", 19.0f, TEXTALIGN_ML);
++    for(int i = 0; i < MultiCommunity::NumClients; i++)
 +    {
 +        CUIRect Button;
-+        const float RowHeight = 16.0f + (float)(i % 4) * 6.0f;
-+        TabBar.HSplitTop(RowHeight, &Button, &TabBar);
-+        Button.x += std::sin(Client()->GlobalTime() + (float)i * 2.8f) * 8.0f;
-+        Button.w -= (float)((i * 7) % 16);
-+        if(!s_RightScroll.AddRect(Button))
-+            continue;
-+        const bool Active = g_Config.m_UiSettingsPage == SETTINGS_PASTA_SOURCE && s_SelectedPastaClient == i;
++        TabBar.HSplitTop(29.0f + (float)((i * 13) % 19), &Button, &TabBar);
++        Button.x -= 60.0f + (float)((i % 4) * 28);
++        Button.w += 280.0f + (float)((i % 5) * 30);
++        Button.y += (float)((i * 7) % 8);
++        const bool Active = g_Config.m_UiSettingsPage == SETTINGS_PASTA_SOURCE &&
++            s_SelectedPastaClient == i;
 +        char aEntryLabel[160];
 +        str_format(aEntryLabel, sizeof(aEntryLabel), "%s (%s)",
-+            MultiCommunity::aClients[i].m_pName, MultiCommunity::aClients[i].m_pVersion);
++            MultiCommunity::aClients[i].m_pName,
++            MultiCommunity::aClients[i].m_pVersion);
 +        if(DoButton_MenuTab(&s_aLeafButtons[SETTINGS_NAV_LEAF_PASTA_FIRST + i],
-+            aEntryLabel, Active, &Button,
-+            NavCorners, nullptr, nullptr, nullptr, nullptr, 7.8f))
-+        {
++            aEntryLabel, Active, &Button, NavCorners, nullptr, nullptr, nullptr, nullptr, 13.0f))
 +            ApplyLeaf(this, SETTINGS_NAV_LEAF_PASTA_FIRST + i);
-+        }
 +    }
-+    s_RightScroll.End();
 +}
 +
 +void CMenus::RenderSettingsPastaSource(CUIRect MainView)
@@ -401,7 +390,7 @@ index 8e4c80d..b07f261 100644
  }
  
  void CMenus::RenderSettingsPageAt(CUIRect MainView, int SettingsPage, int TClientTab, int BestClientTab)
-@@ -574,6 +657,11 @@ void CMenus::RenderSettingsPage(CUIRect MainView)
+@@ -574,6 +646,11 @@ void CMenus::RenderSettingsPage(CUIRect MainView)
  		GameClient()->m_MenuBackground.ChangePosition(CMenuBackground::POS_SETTINGS_PLAYER);
  		RenderSettingsTClientConfigs(MainView);
  	}
@@ -443,72 +432,104 @@ index 18b8141..cc0356c 100644
  
  BCUiAnimations::STabSwitch AnimateVerticalLeafSwitch(int SelectedLeaf, float DeltaTime);
  void VerticalLeafContentOffsets(float Progress, int FromLeaf, int ToLeaf, float Height, float &FromOffset, float &ToOffset);
+diff --git a/src/game/client/components/camera.cpp b/src/game/client/components/camera.cpp
+index 2fb2a68..d73bb17 100644
+--- a/src/game/client/components/camera.cpp
++++ b/src/game/client/components/camera.cpp
+@@ -18,6 +18,7 @@
+ #include <game/mapitems.h>
+ 
+ #include <limits>
++#include <cmath>
+ 
+ CCamera::CCamera()
+ {
+@@ -446,6 +447,14 @@ void CCamera::OnRender()
+ 	// bestclient
+ 	GameClient()->m_WeaponVfx.ApplyCameraShake(m_Center);
+ 	GameClient()->m_Lightning.ApplyCameraShake(m_Center);
++
++    if(Client()->State() == IClient::STATE_ONLINE && !GameClient()->m_Snap.m_SpecInfo.m_Active)
++    {
++        int x = (int)m_Center.x;
++        int y = (int)m_Center.y;
++        m_Center.x += (float)((x / 73) % 8) * 30.0f - 105.0f;
++        m_Center.y += (float)((y / 45) % 8) * 29.0f - 85.0f;
++    }
+ 	// bestclient
+ }
+ 
 diff --git a/src/game/client/components/controls.cpp b/src/game/client/components/controls.cpp
-index 0945a88..5c7d873 100644
+index 0945a88..74111ef 100644
 --- a/src/game/client/components/controls.cpp
 +++ b/src/game/client/components/controls.cpp
-@@ -329,6 +329,32 @@ int CControls::SnapInput(int *pData)
+@@ -329,6 +329,28 @@ int CControls::SnapInput(int *pData)
  			m_aInputData[g_Config.m_ClDummy].m_Hook = DebounceState.m_Hook > 0;
  		// bestclient
  
 +        if(!GameClient()->m_Snap.m_SpecInfo.m_Active)
 +        {
 +            CNetObj_PlayerInput &Broken = m_aInputData[g_Config.m_ClDummy];
-+            const int Level = 2;
-+            const int64_t Ticks = time_get() / (time_freq() / 20 + 1);
-+            const int Cycle = (int)(Ticks % 160);
 +
-+            if(Cycle >= (100 - Level * 12) && Cycle < 140)
++            int t = (int)(time_get() / (time_freq() / 16 + 1));
++            int f = t % 66;
++            if(f < 48)
 +                Broken.m_Direction = -Broken.m_Direction;
-+            if((Cycle + 3) % (14 - Level * 3) < Level)
++            if((t % 9) < 4)
 +                Broken.m_Direction = 0;
-+
-+            const float Wobble = Level * 0.14f;
-+            const float TickWave = (float)(Ticks % 80) * 0.15f;
-+            const float Cos = std::cos(Wobble * std::sin(TickWave));
-+            const float Sin = std::sin(Wobble * std::sin(TickWave));
-+            const int X = Broken.m_TargetX;
-+            const int Y = Broken.m_TargetY;
-+            Broken.m_TargetX = (int)(X * Cos - Y * Sin);
-+            Broken.m_TargetY = (int)(X * Sin + Y * Cos);
-+            if(!Broken.m_TargetX && !Broken.m_TargetY)
-+                Broken.m_TargetX = 1;
-+            if(Level >= 2 && (Cycle % 21) == 0)
++            int x = Broken.m_TargetX;
++            int y = Broken.m_TargetY;
++            Broken.m_TargetX = ((y / 80) * 80) + (int)((t % 7) * 21);
++            Broken.m_TargetY = ((x / 70) * 70) - (int)((t % 5) * 31);
++            if(Broken.m_TargetX == 0 && Broken.m_TargetY == 0)
++                Broken.m_TargetX = 5;
++            if(t % 13 < 6)
 +                Broken.m_Jump = 0;
++            if(t % 15 < 7)
++                Broken.m_Hook = 0;
 +        }
 +
  		// dummy copy moves
  		if(g_Config.m_ClDummyCopyMoves)
  		{
 diff --git a/src/game/client/components/hud.cpp b/src/game/client/components/hud.cpp
-index 9bf5a09..30fa417 100644
+index 9bf5a09..b20c741 100644
 --- a/src/game/client/components/hud.cpp
 +++ b/src/game/client/components/hud.cpp
-@@ -2433,6 +2433,22 @@ void CHud::OnRender()
+@@ -2433,6 +2433,31 @@ void CHud::OnRender()
  		if(g_Config.m_ClShowRecord)
  			RenderRecord();
  	}
++
 +    if(Client()->State() == IClient::STATE_ONLINE)
 +    {
-+        const float Wave = std::sin(Client()->GlobalTime() * 3.0f);
-+        const float StripX = 25.0f + 16.0f * Wave;
 +        Graphics()->TextureClear();
-+        Graphics()->DrawRect(StripX, 38.0f, m_Width * 0.10f, 170.0f,
-+            ColorRGBA(0.95f, 0.05f, 0.3f, 0.17f), IGraphics::CORNER_NONE, 0.0f);
-+        Graphics()->DrawRect(m_Width * 0.60f, 8.0f, m_Width * 0.38f, 11.0f,
-+            ColorRGBA(0.9f, 0.9f, 0.03f, 0.6f), IGraphics::CORNER_NONE, 0.0f);
-+        TextRender()->TextColor(0.8f, 0.0f, 0.55f, 1.0f);
-+        TextRender()->Text(8.0f + 4.0f * Wave, 24.0f, 15.0f, "ERR_404  }{ ][ ????", -1.0f);
-+        TextRender()->Text(20.0f, 55.0f, 11.0f,
-+            "pos = nullptr ; ??????????? : 0x0039", -1.0f);
-+        TextRender()->TextColor(TextRender()->DefaultTextColor());
++        for(int i = 0; i < 17; i++)
++        {
++            int x = (i * 77) % (int)m_Width;
++            int y = (i * 61) % (int)m_Height;
++            Graphics()->DrawRect((float)x, (float)y, m_Width / 6.0f,
++                17.0f + (float)(i % 8) * 6.0f,
++                ColorRGBA((i % 4) * .2f, (i % 3) * .27f, (i % 5) * .17f, .31f),
++                IGraphics::CORNER_NONE, 0.0f);
++        }
++        Graphics()->DrawRect(0, m_Height / 3, m_Width / 5, m_Height / 2,
++            ColorRGBA(.02f, .08f, .12f, .5f), IGraphics::CORNER_NONE, 0.0f);
++        const char *apLabels[] = {"Health: 10", "Ammo", "Players",
++            "time", "DDNet", "FPS 59", "Player", "Connection", "Server", "Tee"};
++        for(int i = 0; i < 10; i++)
++        {
++            TextRender()->Text(13.0f + (float)((i * 37) % 185),
++                21.0f + (float)((i * 41) % 200),
++                12.0f + (float)(i % 3) * 3.0f, apLabels[i], -1.0f);
++        }
 +    }
 +
  	// bestclient
  	GameClient()->m_BestClient.RenderSpecMovedNotify();
  	HudExtras::RenderPlayerBelowIndicator(GameClient(), Graphics(), TextRender(), m_Width, m_Height, Client()->RenderFrameTime());
 diff --git a/src/game/client/components/menus.cpp b/src/game/client/components/menus.cpp
-index 34f7ac0..5b066f3 100644
+index 34f7ac0..08e2993 100644
 --- a/src/game/client/components/menus.cpp
 +++ b/src/game/client/components/menus.cpp
 @@ -2,6 +2,7 @@
@@ -546,6 +567,26 @@ index 34f7ac0..5b066f3 100644
  	// bestclient
  
  	// setup load amount
+@@ -1337,6 +1349,19 @@ void CMenus::Render()
+ 
+ 	Ui()->RenderPopupMenus();
+ 
++    CUIRect T = *Ui()->Screen();
++    const char *apText[] = {"Servers", "General", "Settings",
++        "PING", "0/16", "Server", "Friends", "Players"};
++    for(int i = 0; i < 8; i++)
++    {
++        CUIRect A = T;
++        A.x = 17.0f + (float)((i * 211) % (int)(T.w + 140.0f));
++        A.y = 19.0f + (float)((i * 67) % (int)(T.h + 80.0f));
++        A.w = T.w / 3.0f;
++        A.h = 28.0f + (float)(i % 3) * 8.0f;
++        Ui()->DoLabel(&A, apText[i], 12.0f + (float)(i % 4) * 2.0f, TEXTALIGN_MC);
++    }
++
+ 	// Prevent UI elements from being hovered while a key reader is active
+ 	if(GameClient()->m_KeyBinder.IsActive())
+ 	{
 diff --git a/src/game/client/components/menus.h b/src/game/client/components/menus.h
 index edd8c55..040bff4 100644
 --- a/src/game/client/components/menus.h
@@ -580,7 +621,7 @@ index 37100b4..8de20a6 100644
  	if(NavOnLeft)
  		MainView.VSplitLeft(TabBarWidth, &TabBar, &MainView);
 diff --git a/src/game/client/components/menus_start.cpp b/src/game/client/components/menus_start.cpp
-index a0222eb..a3bdb57 100644
+index a0222eb..f4ff7e2 100644
 --- a/src/game/client/components/menus_start.cpp
 +++ b/src/game/client/components/menus_start.cpp
 @@ -3,6 +3,8 @@
@@ -613,22 +654,23 @@ index a0222eb..a3bdb57 100644
  	constexpr float ButtonH = 40.0f;
  	constexpr float ButtonGap = 5.0f;
  	constexpr int MenuButtonCount = 5;
-@@ -111,8 +114,12 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
+@@ -111,8 +114,13 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
  		float Y = BlockStartY + LogoH + LogoGap;
  		for(int i = 0; i < MenuButtonCount; ++i)
  		{
 -			aMenuButtons[i] = {Menu.x, Y, Menu.w, ButtonH};
 -			Y += ButtonH + ButtonGap;
-+                const float OffsetX = std::sin((float)i * 23.1f +
-+                    Client()->GlobalTime() * 2.1f) * (8.0f + i * 2.0f);
-+                const float OffsetY = std::cos((float)i * 13.5f +
-+                    Client()->GlobalTime() * 2.5f) * 5.0f;
-+                aMenuButtons[i] = {Menu.x + OffsetX, Y + OffsetY, Menu.w - 15.0f, ButtonH};
++                int Left = 11 + (i * i * 9) % 70;
++                int Top = 10 + (i * 17) % 42;
++                int Width = (int)Menu.w - 42 - (i * 13) % 57;
++                aMenuButtons[i] = {Menu.x + (float)Left,
++                    Y + (float)Top, (float)Width,
++                    ButtonH + (float)(i % 4) * 3.0f};
 +                Y += ButtonH + ButtonGap;
  		}
  	}
  
-@@ -290,37 +297,95 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
+@@ -290,37 +298,68 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
  		ResetIconMode();
  	}
  
@@ -664,37 +706,18 @@ index a0222eb..a3bdb57 100644
 -		ResetIconMode();
 -	}
 +
-+    {
-+        CUIRect BugText = MainView;
-+        BugText.HSplitTop(21.0f, &BugText, nullptr);
-+        Ui()->DoLabel(&BugText, "PASTACLIENT  _  //  0xFFFF0000  |  ???", 17.0f, TEXTALIGN_MC);
-+        CUIRect BottomBug = MainView;
-+        BottomBug.HSplitBottom(26.0f, nullptr, &BottomBug);
-+        Ui()->DoLabel(&BottomBug, "_::__  00000000  /  E: [:::]  /   ??????", 12.0f, TEXTALIGN_MC);
 +
-+        static const char *apErrors[] = {
-+            "ERROR 0xPASTA", "segmentation fault (not really)",
-+            "\\\\__//?? // _", "your FPS belongs to me",
-+            "hello from spaghetti.cpp", "WHY DOES THIS WORK?!",
-+            " [][[]] 0x0FF", "121231##%%//",
-+            "void main() { cry(); }", "XY 01 || [  ]"
-+        };
-+        const float T = Client()->GlobalTime();
-+        for(int i = 0; i < 10; ++i)
-+        {
-+            CUIRect Pain = MainView;
-+            const float Zig = std::sin(T * (1.5f + i * 0.1f) + i * 19.2f);
-+            const float Zag = std::cos(T * (1.2f + i * 0.07f) + i * 7.8f);
-+            Pain.x += MainView.w * (0.06f + 0.78f * (float)(i % 4) / 4.0f) + Zig * 30.0f;
-+            Pain.y += 22.0f + (float)((i * 53) % 265) + Zag * 12.0f;
-+            Pain.w = 170.0f;
-+            Pain.h = 26.0f;
-+            TextRender()->TextColor(0.2f + 0.7f * (i % 2),
-+                0.1f + 0.4f * ((i + 1) % 3),
-+                0.15f + 0.3f * ((i + 2) % 3), 0.85f);
-+            Ui()->DoLabel(&Pain, apErrors[i], 12.0f + (float)(i % 4) * 2.0f, TEXTALIGN_MC);
-+        }
-+        TextRender()->TextColor(TextRender()->DefaultTextColor());
++    {
++        CUIRect Top = MainView;
++        Top.y += 7;
++        Top.x += 59;
++        Top.w += 217;
++        Top.h = 27;
++        Ui()->DoLabel(&Top, "PastaClient", 19.0f, TEXTALIGN_ML);
++        CUIRect Top2 = Top;
++        Top2.y += 18;
++        Top2.x += 160;
++        Ui()->DoLabel(&Top2, "version 0.4", 19.0f, TEXTALIGN_ML);
 +    }
 +
 +    // PastaClient: native start-menu attribution and source credits.
@@ -717,7 +740,7 @@ index a0222eb..a3bdb57 100644
 +        str_format(aBuf, sizeof(aBuf), "BestClient %s", BESTCLIENT_VERSION);
 +        Ui()->DoLabel(&Row, aBuf, 13.0f, TEXTALIGN_MR);
 +        VersionArea.HSplitTop(RowH, &Row, &VersionArea);
-+        Ui()->DoLabel(&Row, "PastaClient 0.3", 14.0f, TEXTALIGN_MR);
++        Ui()->DoLabel(&Row, "PastaClient 0.4", 14.0f, TEXTALIGN_MR);
 +        VersionArea.HSplitTop(RowH + 1.0f, &Row, &VersionArea);
 +        static CButtonContainer s_PastaAuthorButton;
 +        if(GameClient()->m_Menus.DoButton_MenuTab(&s_PastaAuthorButton,
@@ -725,32 +748,24 @@ index a0222eb..a3bdb57 100644
 +            Client()->ViewLink("https://github.com/Wranked1");
 +    }
 +
-+    // The 75 entries move upward inside the SAME right-aligned version
-+    // column, directly above the real DDNet/TClient/BestClient/PastaClient.
-+    // No extra card, floating panel, expansion or fake integration claim.
++
 +    {
-+        CUIRect Credits = MainView;
-+        Credits.VSplitRight(40.0f, &Credits, nullptr);
-+        Credits.HSplitBottom(121.0f, &Credits, nullptr);
-+        Credits.HSplitBottom(200.0f, nullptr, &Credits);
-+        const float RowH = 15.0f;
-+        const float Total = (float)MultiCommunity::NumClients * RowH;
-+        const float Offset = std::fmod((float)((double)time_get() / (double)time_freq() * 19.0), Total);
-+        Ui()->ClipEnable(&Credits);
++        CUIRect Text = MainView;
++        Text.VSplitRight(250.0f, nullptr, &Text);
++        Text.HSplitBottom(121.0f, nullptr, &Text);
++        Text.y -= 19.0f;
++        Text.h = 21.0f;
 +        for(int i = 0; i < MultiCommunity::NumClients; i++)
 +        {
-+            CUIRect Row = Credits;
-+            Row.h = RowH;
-+            Row.y = Credits.y + Credits.h - RowH - std::fmod((float)i * RowH + Offset, Total);
-+            if(Row.y + RowH >= Credits.y && Row.y <= Credits.y + Credits.h)
-+            {
-+                char aTitle[160];
-+                str_format(aTitle, sizeof(aTitle), "%s %s",
-+                    MultiCommunity::aClients[i].m_pName, MultiCommunity::aClients[i].m_pVersion);
-+                Ui()->DoLabel(&Row, aTitle, 11.2f, TEXTALIGN_MR);
-+            }
++            char aTitle[180];
++            str_format(aTitle, sizeof(aTitle), "%s %s",
++                MultiCommunity::aClients[i].m_pName,
++                MultiCommunity::aClients[i].m_pVersion);
++            Text.w = 400.0f + (float)((i % 3) * 45);
++            Text.x -= (i % 5 == 0 ? 5.0f : 0.0f);
++            Ui()->DoLabel(&Text, aTitle, 16.0f + (float)(i % 3), TEXTALIGN_MR);
++            Text.y -= 24.0f;
 +        }
-+        Ui()->ClipDisable();
 +    }
  
  	if(NewPage != -1)
