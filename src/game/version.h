@@ -1,0 +1,6 @@
+#ifndef GAME_VERSION_H
+#define GAME_VERSION_H
+#define GAME_RELEASE_VERSION_INTERNAL "0.4.0"
+#define TCLIENT_VERSION "0.4.0"
+#define BESTCLIENT_VERSION "0.4.0"
+#endif
