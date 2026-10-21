@@ -31,7 +31,7 @@ jobs:
         #endif
         EOF
         
-        # Создаем version.h для bestclient (именно version.h)
+        # Создаем version.h для bestclient
         mkdir -p src/game/client/components/bestclient/
         cat << 'EOF' > src/game/client/components/bestclient/version.h
         #define BESTCLIENT_VERSION "0.4.0"
@@ -48,6 +48,17 @@ jobs:
       run: |
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
         $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
+
+    - name: Smart Patcher (Auto-fix for Android)
+      run: |
+        echo "Патчим CMakeLists.txt..."
+        # Убираем линковку виндовых библиотек
+        sed -i 's/ws2_32//g; s/winmm//g; s/gdi32//g; s/opengl32//g; s/iphlpapi//g; s/advapi32//g; s/user32//g' CMakeLists.txt
+        
+        echo "Патчим windows.h и системные вызовы..."
+        find src -type f \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's/#include <windows.h>/#ifdef _WIN32\n#include <windows.h>\n#endif/g' || true
+        find src -type f \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's/#include <winsock2.h>/#ifdef _WIN32\n#include <winsock2.h>\n#else\n#include <sys\/socket.h>\n#include <netinet\/in.h>\n#include <arpa\/inet.h>\n#include <unistd.h>\n#define closesocket close\n#define SOCKET int\n#define INVALID_SOCKET -1\n#define SOCKET_ERROR -1\n#endif/g' || true
+        find src -type f \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's/#include <process.h>/#ifdef _WIN32\n#include <process.h>\n#else\n#include <pthread.h>\n#endif/g' || true
 
     - name: Configure CMake
       run: |
