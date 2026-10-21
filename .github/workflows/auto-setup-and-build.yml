@@ -8,13 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/25.2.9519653
+      ANDROID_NDK: /usr/local/lib/android/sdk/ndk/25.2.9519653
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Auto-create missing files
       run: |
-        # Создаем version.h
+        # Создаем version.h для игры
         mkdir -p src/game
         cat << 'EOF' > src/game/version.h
         #ifndef GAME_VERSION_H
@@ -25,25 +31,23 @@ jobs:
         #endif
         EOF
         
-        # Создаем bestclient_version.h
+        # Создаем version.h для bestclient (именно version.h)
         mkdir -p src/game/client/components/bestclient/
-        cat << 'EOF' > src/game/client/components/bestclient/bestclient_version.h
+        cat << 'EOF' > src/game/client/components/bestclient/version.h
         #define BESTCLIENT_VERSION "0.4.0"
         EOF
 
-        # Коммитим изменения от имени бота
+        # Коммитим изменения
         git config user.name "GitHub Action Bot"
         git config user.email "actions@github.com"
         git add .
-        git commit -m "Auto-generated version files" || echo "No changes"
+        git commit -m "Fix bestclient version file" || echo "No changes"
         git push
 
     - name: Setup Android SDK & NDK
       run: |
-        # Ставим NDK
-        yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-        /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
-        echo "ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
 
     - name: Configure CMake
       run: |
