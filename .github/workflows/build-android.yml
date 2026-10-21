@@ -8,6 +8,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/25.2.9519653
+      ANDROID_NDK: /usr/local/lib/android/sdk/ndk/25.2.9519653
+
     steps:
     - uses: actions/checkout@v4
       with:
@@ -19,13 +25,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
     - name: Install NDK
       run: |
-        echo "y" | sdkmanager --install "ndk;25.2.9519653"
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+        # Принимаем лицензии и устанавливаем нужную версию NDK
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
 
     - name: Configure CMake
       run: |
